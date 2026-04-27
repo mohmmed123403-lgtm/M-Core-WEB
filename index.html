@@ -5,17 +5,199 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>M-Core Browser</title>
     <style>
-        body { background: #0d1117; color: white; font-family: Arial; text-align: center; padding: 50px; }
-        h1 { color: #58a6ff; }
-        input { padding: 15px; width: 80%; margin: 20px 0; border-radius: 10px; border: 1px solid #30363d; background: #161b22; color: white; }
-        button { padding: 15px 30px; background: #238636; color: white; border: none; border-radius: 10px; font-size: 16px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma; }
+        body { background: #0d1117; color: #c9d1d9; height: 100vh; overflow: hidden; }
+       .header { background: #161b22; padding: 10px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #30363d; }
+       .logo { font-weight: 900; color: #58a6ff; font-size: 20px; }
+       .search-box { flex: 1; display: flex; background: #0d1117; border: 1px solid #30363d; border-radius: 20px; overflow: hidden; }
+       .search-box input { flex: 1; background: transparent; border: none; padding: 12px 16px; color: #c9d1d9; outline: none; font-size: 15px; }
+       .search-box button { background: #238636; border: none; color: white; padding: 0 18px; cursor: pointer; font-weight: bold; }
+       .menu-btn { background: transparent; border: none; color: #c9d1d9; font-size: 26px; cursor: pointer; padding: 0 10px; }
+        #frame { width: 100%; height: calc(100vh - 118px); border: none; background: #0d1117; }
+       .history { background: #161b22; height: 58px; overflow-x: auto; white-space: nowrap; padding: 8px; border-top: 1px solid #30363d; display: flex; align-items: center; gap: 8px; }
+       .history-label { opacity: 0.6; font-size: 13px; margin-left: 5px; }
+       .history-item { display: inline-block; background: #21262d; padding: 8px 14px; border-radius: 20px; cursor: pointer; font-size: 13px; border: 1px solid #30363d; }
+       .history-item:hover { background: #30363d; border-color: #58a6ff; }
+       .clear-history { background: #da3633; border: none; color: white; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 12px; margin-right: auto; }
+       .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; backdrop-filter: blur(5px); }
+       .modal-content { background: #161b22; margin: 60px auto; padding: 0; width: 90%; max-width: 420px; border-radius: 16px; border: 1px solid #30363d; overflow: hidden; }
+       .modal-header { background: #0d1117; padding: 18px 20px; border-bottom: 1px solid #30363d; }
+       .modal-header h2 { color: #58a6ff; font-size: 20px; }
+       .modal-body { padding: 10px 20px; max-height: 60vh; overflow-y: auto; }
+       .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; border-bottom: 1px solid #21262d; }
+       .setting-info { flex: 1; }
+       .setting-title { font-weight: 600; margin-bottom: 4px; }
+       .setting-desc { font-size: 12px; opacity: 0.6; }
+       .switch { position: relative; width: 52px; height: 28px; }
+       .switch input { opacity: 0; }
+       .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #30363d; transition:.3s; border-radius: 28px; }
+       .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background: white; transition:.3s; border-radius: 50%; }
+        input:checked +.slider { background: #238636; }
+        input:checked +.slider:before { transform: translateX(24px); }
+       .modal-footer { padding: 15px 20px; background: #0d1117; border-top: 1px solid #30363d; }
+       .close-btn { background: #238636; border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 15px; }
+       .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #161b22; border: 1px solid #58a6ff; padding: 15px 20px; border-radius: 12px; display: none; z-index: 2000; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
-    <h1>M-Core Browser شغال 🚀</h1>
-    <p>لو شايف الكلام ده يبقى الكود اشتغل</p>
-    <input type="text" placeholder="ابحث في M-Core" id="url">
-    <br>
-    <button onclick="alert('الزرار شغال!')">افتح</button>
+    <div class="header">
+        <div class="logo">M-Core</div>
+        <div class="search-box">
+            <input type="text" id="url" placeholder="ابحث في M-Core أو اكتب رابط..." onkeypress="if(event.key==='Enter') load()">
+            <button onclick="load()">افتح</button>
+        </div>
+        <button class="menu-btn" onclick="openSettings()">⋮</button>
+    </div>
+
+    <iframe id="frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"></iframe>
+
+    <div class="history" id="history">
+        <span class="history-label">السجل:</span>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>إعدادات M-Core Browser</h2>
+            </div>
+            <div class="modal-body">
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <div class="setting-title">وضع زيادة السرعة ⚡</div>
+                        <div class="setting-desc">تسريع التصفح والتحميل لأقصى درجة</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="speedMode" onchange="toggleSpeed()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <div class="setting-title">وضع الأهل 🔒</div>
+                        <div class="setting-desc">حظر المواقع غير المناسبة تلقائياً</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="parentalMode" onchange="toggleParental()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <div class="setting-title">إعدادات الموقع الإلكتروني</div>
+                        <div class="setting-desc">إدارة الكوكيز والتخزين لكل موقع</div>
+                    </div>
+                    <span style="opacity: 0.5;">→</span>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <div class="setting-title">أذونات المواقع</div>
+                        <div class="setting-desc">الكاميرا، المايك، الموقع، الإشعارات</div>
+                    </div>
+                    <span style="opacity: 0.5;">→</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="close-btn" onclick="closeSettings()">حفظ وإغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="permToast" class="toast">
+        <div id="permText"></div>
+    </div>
+
+    <script>
+        const server = 'https://m-core-server.vercel.app';
+        const blockedSites = ['youtube.com', 'google.com', 'tiktok.com', 'facebook.com', 'github.com', 'twitter.com', 'x.com', 'instagram.com'];
+        const adultSites = ['porn', 'xxx', 'sex', 'adult', 'pornhub', 'xvideos'];
+
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('mcore_history') || '[]');
+            const historyDiv = document.getElementById('history');
+            historyDiv.innerHTML = '<span class="history-label">السجل:</span><button class="clear-history" onclick="clearHistory()">مسح</button>';
+            history.slice(-15).reverse().forEach(url => {
+                const item = document.createElement('span');
+                item.className = 'history-item';
+                let displayUrl = url.replace('https://', '').replace('http://', '').split('/')[0];
+                item.textContent = displayUrl.length > 20? displayUrl.substring(0, 20) + '...' : displayUrl;
+                item.title = url;
+                item.onclick = () => { document.getElementById('url').value = url; load(); };
+                historyDiv.insertBefore(item, historyDiv.children[1]);
+            });
+        }
+
+        function clearHistory() {
+            if(confirm('مسح كل السجل؟')) {
+                localStorage.removeItem('mcore_history');
+                loadHistory();
+            }
+        }
+
+        function addHistory(url) {
+            let history = JSON.parse(localStorage.getItem('mcore_history') || '[]');
+            history = history.filter(u => u!== url);
+            history.push(url);
+            if(history.length > 100) history.shift();
+            localStorage.setItem('mcore_history', JSON.stringify(history));
+            loadHistory();
+        }
+
+        function load() {
+            let u = document.getElementById('url').value.trim();
+            if (!u) return;
+
+            if(localStorage.getItem('parentalMode') === 'true') {
+                if(adultSites.some(site => u.toLowerCase().includes(site))) {
+                    showToast('تم حظر هذا الموقع بواسطة وضع الأهل 🔒');
+                    return;
+                }
+            }
+
+            if (!u.startsWith('http')) u = 'https://' + u;
+            addHistory(u);
+
+            if(blockedSites.some(site => u.includes(site))) {
+                showToast('الموقع محمي، سيفتح في نافذة جديدة ⚡');
+                setTimeout(() => {
+                    window.open(server + '/browse?url=' + encodeURIComponent(u), '_blank');
+                }, 800);
+            } else {
+                document.getElementById('frame').src = server + '/browse?url=' + encodeURIComponent(u);
+                if(localStorage.getItem('speedMode') === 'true') showToast('تم تفعيل وضع السرعة ⚡');
+            }
+        }
+
+        function openSettings() { document.getElementById('settingsModal').style.display = 'block'; }
+        function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+
+        function toggleParental() {
+            const enabled = document.getElementById('parentalMode').checked;
+            localStorage.setItem('parentalMode', enabled);
+            showToast(enabled? 'تم تفعيل وضع الأهل 🔒' : 'تم إلغاء وضع الأهل');
+        }
+
+        function toggleSpeed() {
+            const enabled = document.getElementById('speedMode').checked;
+            localStorage.setItem('speedMode', enabled);
+            showToast(enabled? 'تم تفعيل وضع زيادة السرعة ⚡' : 'تم إلغاء وضع السرعة');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('permToast');
+            document.getElementById('permText').textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2500);
+        }
+
+        window.onload = () => {
+            loadHistory();
+            document.getElementById('parentalMode').checked = localStorage.getItem('parentalMode') === 'true';
+            document.getElementById('speedMode').checked = localStorage.getItem('speedMode') === 'true';
+        }
+
+        window.onclick = (e) => {
+            if (e.target === document.getElementById('settingsModal')) closeSettings();
+        }
+    </script>
 </body>
 </html>
