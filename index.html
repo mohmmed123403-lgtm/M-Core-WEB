@@ -220,8 +220,36 @@
 
     <script>
         const server = 'https://m-core-server.vercel.app/api/browse';
-        const blockedSites = ['youtube.com', 'google.com', 'tiktok.com', 'facebook.com', 'github.com', 'twitter.com', 'x.com', 'instagram.com'];
-        const adultSites = ['porn', 'xxx', 'sex', 'adult', 'pornhub', 'xvideos'];
+
+function goToUrl(u) {
+    hideUrlSuggestions();
+    hideSearchSuggestions();
+
+    if (!u.startsWith('http') && !u.includes('.')) {
+        // البحث يروح للسيرفر وهو هيجيب النتائج
+        u = u; // خليه زي ما هو
+    } else if (!u.startsWith('http')) {
+        u = 'https://' + u;
+    }
+
+    if(localStorage.getItem('parentalMode') === 'true') {
+        if(adultSites.some(site => u.toLowerCase().includes(site))) {
+            showToast('تم حظر هذا الموقع بواسطة وضع الأهل 🔒');
+            return;
+        }
+    }
+
+    addHistory(u);
+    document.getElementById('homePage').style.display = 'none';
+    document.getElementById('frame').style.display = 'block';
+    document.getElementById('urlBar').value = u;
+
+    // كله يروح للسيرفر - هو هيتعامل
+    document.getElementById('frame').src = server + '?url=' + encodeURIComponent(u);
+    showToast('جاري التحميل من M-Core Server... ⚡');
+}
+        
+                    
 
         const commonSearches = [
             'youtube.com', 'google.com', 'facebook.com', 'github.com', 'twitter.com',
